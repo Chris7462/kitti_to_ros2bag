@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(kitti_to_ros2bag)
 
+set(CMAKE_BUILD_TYPE "Release")
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-O3 -Wall -Wextra -Wpedantic)
 endif()
 
 # find dependencies
@@ -10,15 +12,29 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
 
-add_executable(kitti_to_ros2bag_node src/kitti_to_ros2bag_node.cpp)
+add_executable(kitti_to_ros2bag_node
+  src/kitti_to_ros2bag_node.cpp
+  src/kitti_to_ros2bag.cpp)
+
 target_include_directories(kitti_to_ros2bag_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+
+ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
+  rclcpp)
+
 target_compile_features(kitti_to_ros2bag_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 install(TARGETS kitti_to_ros2bag_node
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
+
+install(DIRECTORY params
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
