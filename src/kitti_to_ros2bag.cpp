@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
-#include <algorithm>
+#include <fstream>
+#include <sstream>
 
 #include "kitti_to_ros2bag/kitti_to_ros2bag.hpp"
 
@@ -11,30 +13,30 @@ namespace fs = std::filesystem;
 Kitti2BagNode::Kitti2BagNode()
 : Node("kitti2bag_node"), index_{0}
 {
-  declare_parameter("oxts_path", rclcpp::PARAMETER_STRING);
-  declare_parameter("point_cloud_path", rclcpp::PARAMETER_STRING);
-  declare_parameter("left_gray_image_path", rclcpp::PARAMETER_STRING);
-  declare_parameter("right_gray_image_path", rclcpp::PARAMETER_STRING);
-  declare_parameter("left_color_image_path", rclcpp::PARAMETER_STRING);
-  declare_parameter("right_color_image_path", rclcpp::PARAMETER_STRING);
+  declare_parameter("kitti_path", rclcpp::PARAMETER_STRING);
+  kitti_path_ = get_parameter("kitti_path").as_string();
 
-  oxts_path_ = get_parameter("oxts_path").as_string();
-  point_cloud_path_ = get_parameter("point_cloud_path").as_string();
-  left_gray_image_path_ = get_parameter("left_gray_image_path").as_string();
-  right_gray_image_path_ = get_parameter("right_gray_image_path").as_string();
-  left_color_image_path_ = get_parameter("left_color_image_path").as_string();
-  right_color_image_path_ = get_parameter("right_color_image_path").as_string();
+  dirs_ = {"image_00/", "image_01/", "image_02/", "image_03/", "oxts/", "velodyne_points/"};
 
-  get_all_filenames();
-  max_index_ = oxts_filenams_.size();
+  get_filenames();
+  max_index_ = filenames_.size();
+
+  get_all_timestamps();
 
   timer_ = create_wall_timer(100ms, std::bind(&Kitti2BagNode::on_timer_callback, this));
 };
 
 void Kitti2BagNode::on_timer_callback()
 {
-  // OXTS to IMU and GPS
-  std::string oxts_filename = oxts_path_ + oxts_filenams_[index_];
+  // image_00
+  // image_01
+  // image_02
+  // image_03
+  // oxts
+  // velodyne_points
+
+//// OXTS to IMU and GPS
+//std::string oxts_filename = oxts_path_ + oxts_filenams_[index_];
 
 
   RCLCPP_INFO(this->get_logger(), "Publishing index = %ld", index_);
@@ -45,64 +47,75 @@ void Kitti2BagNode::on_timer_callback()
   }
 }
 
-void Kitti2BagNode::get_all_filenames()
+void Kitti2BagNode::get_filenames()
 {
-  for (Type currentType = oxts; currentType < maxTypes; currentType = static_cast<Type>(currentType + 1)) {
-    fs::path directory_path;
-    std::vector<std::string>* filenames;
+  try {
+    fs::path directory_path = kitti_path_ + dirs_[0] + "data";
+    if (fs::is_directory(directory_path)) {
+      for (const auto & entry : fs::directory_iterator(directory_path)) {
+        if (entry.is_regular_file()) {
+          filenames_.push_back(entry.path().filename().stem());
+        }
+      }
+      // sort the filename
+      std::sort(filenames_.begin(), filenames_.end(),
+        [](const auto & lhs, const auto & rhs) {
+          return lhs < rhs;
+        });
+    } else {
+      RCLCPP_ERROR(get_logger(), "Error: The specified path is not a directory.");
+      rclcpp::shutdown();
+    }
+  } catch (const fs::filesystem_error & e) {
+    RCLCPP_ERROR(get_logger(), "Filesystem error: %s", e.what());
+    rclcpp::shutdown();
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(get_logger(), "Error: %s", e.what());
+    rclcpp::shutdown();
+  }
+}
 
-    switch (currentType) {
-      case oxts:
-        directory_path = oxts_path_;
-        filenames = &oxts_filenams_;
-        break;
-      case point_cloud:
-        directory_path = point_cloud_path_;
-        filenames = &point_cloud_filenams_;
-        break;
-      case left_gray_image:
-        directory_path = left_gray_image_path_;
-        filenames = &left_gray_image_filenams_;
-        break;
-      case right_gray_image:
-        directory_path = right_gray_image_path_;
-        filenames = &right_gray_image_filenams_;
-        break;
-      case left_color_image:
-        directory_path = left_color_image_path_;
-        filenames = &left_color_image_filenams_;
-        break;
-      case right_color_image:
-        directory_path = right_color_image_path_;
-        filenames = &right_color_image_filenams_;
-        break;
-      default:
-        RCLCPP_ERROR(get_logger(), "Unexpected enum");
-        break;
+void Kitti2BagNode::get_all_timestamps()
+{
+  const std::string timestamps_file = "timestamps.txt";
+  for (auto & dir : dirs_) {
+    std::vector<rclcpp::Time> timestamp_vec{};
+
+    // open the file
+    std::ifstream input_file(kitti_path_ + dir + timestamps_file);
+    if (!input_file.is_open()) {
+      RCLCPP_ERROR(get_logger(), "Unable to open file %s", timestamps_file.c_str());
+      rclcpp::shutdown();
     }
 
-    try {
-      if (fs::is_directory(directory_path)) {
-        for (const auto & entry : fs::directory_iterator(directory_path)) {
-          if (entry.is_regular_file()) {
-            filenames->push_back(entry.path().filename().string());
-          }
-        }
-        // sort the filename
-        std::sort(filenames->begin(), filenames->end(),
-          [](const auto & lhs, const auto & rhs) {
-            return lhs < rhs;
-          });
-      } else {
-        RCLCPP_ERROR(get_logger(), "Error: The specified path is not a directory.");
+    std::string line;
+    while (std::getline(input_file, line)) {
+      // Convert timestamp string to std::chrono::time_point
+      std::tm tm = {};
+      std::istringstream iss(line);
+      iss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S.");
+      if (iss.fail()) {
+        RCLCPP_ERROR(get_logger(), "Failed to parse timestamp.");
         rclcpp::shutdown();
       }
-    } catch (const fs::filesystem_error & e) {
-      RCLCPP_ERROR(get_logger(), "Filesystem error: %s", e.what());
-      rclcpp::shutdown();
-    } catch (const std::exception & e) {
-      RCLCPP_ERROR(get_logger(), "Error: %s", e.what());
-      rclcpp::shutdown();
+
+      // Extract microseconds and convert to duration
+      std::chrono::nanoseconds::rep nanoSecondsCount;
+      iss >> nanoSecondsCount;
+      if (iss.fail()) {
+        RCLCPP_ERROR(get_logger(), "Failed to parse microseconds.");
+        rclcpp::shutdown();
+      }
+      auto nanoseconds = std::chrono::nanoseconds(nanoSecondsCount).count();
+
+      // Convert std::tm to std::chrono::time_point
+      auto timePoint = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+      // Convert time_point to epoch time (seconds since 1970-01-01)
+      auto epochTime = std::chrono::duration_cast<std::chrono::seconds>(timePoint.time_since_epoch()).count();
+
+      timestamp_vec.push_back(rclcpp::Time(epochTime, nanoseconds));
     }
+    timestamp_.push_back(timestamp_vec);
   }
 }

@@ -1,8 +1,3 @@
 kitti_to_ros2bag_node:
   ros__parameters:
-    oxts_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/oxts/data/"
-    point_cloud_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/velodyne_points/data/"
-    left_gray_image_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/image_00/data/"
-    right_gray_image_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/image_01/data/"
-    left_color_image_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/image_02/data/"
-    right_color_image_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/image_03/data/"
+    kitti_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/"
