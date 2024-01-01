@@ -1,23 +1,21 @@
+// C++ header
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <sstream>
 
+// OpenCV header
+#include <opencv2/imgcodecs.hpp>
+
+// ROS header
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
-
 #include <cv_bridge/cv_bridge.h>
-
-#include <opencv2/imgcodecs.hpp>
 
 #include "kitti_to_ros2bag/kitti_to_ros2bag.hpp"
 
 
 using namespace std::chrono_literals;
-
 
 Kitti2BagNode::Kitti2BagNode()
 : Node("kitti2bag_node"), index_{0}
@@ -49,24 +47,24 @@ void Kitti2BagNode::on_timer_callback()
 
     if (dir == "image_00") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
-      writer_->write(msg, "kitti/camera_gray_left", timestamp);
+      writer_->write(msg, "kitti/camera/gray/left", now());
     } else if (dir == "image_01") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
-      writer_->write(msg, "kitti/camera_gray_right", timestamp);
+      writer_->write(msg, "kitti/camera/gray/right", now());
     } else if (dir == "image_02") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
-      writer_->write(msg, "kitti/camera_color_left", timestamp);
+      writer_->write(msg, "kitti/camera/color/left", now());
     } else if (dir == "image_03") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
-      writer_->write(msg, "kitti/camera_color_right", timestamp);
+      writer_->write(msg, "kitti/camera/color/right", now());
     } else if (dir == "oxts") {
       std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
       auto gps_msg = convert_oxts_to_gps_msg(oxts_parsed_array, timestamp);
-      writer_->write(gps_msg, "kitti/oxts/gps_fix", timestamp);
+      writer_->write(gps_msg, "kitti/oxts/gps/fix", now());
+      auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
+      writer_->write(vel_msg, "kitti/oxts/gps/vel", now());
       auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
-      writer_->write(img_msg, "kitti/oxts/imu", timestamp);
-//    auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
-      // writer_->create_topic({"kitti/oxts/vel", "geometry_msgs/msg/TwistStamped", rmw_get_serialization_format(), ""});
+      writer_->write(img_msg, "kitti/oxts/imu", now());
     } else if (dir == "velodyne_points") {
       // writer_->create_topic({"kitti/velo", "sensor_msgs/msg/PointCloud2", rmw_get_serialization_format(), ""})
     }
@@ -184,7 +182,7 @@ std::vector<std::string> Kitti2BagNode::parse_file_data(const fs::path & file_pa
   std::ifstream input_file(file_path);
 
   if (!input_file.good()) {
-    RCLCPP_INFO(this->get_logger(), "Could not read OXTS data. Check your file path!");
+    RCLCPP_ERROR(this->get_logger(), "Could not read OXTS data. Check your file path!");
     rclcpp::shutdown();
   }
 
@@ -243,6 +241,25 @@ sensor_msgs::msg::NavSatFix Kitti2BagNode::convert_oxts_to_gps_msg(
   return msg;
 }
 
+geometry_msgs::msg::TwistStamped Kitti2BagNode::convert_oxts_to_vel_msg(
+  const std::vector<std::string> & oxts_tokenized_array,
+  const rclcpp::Time & timestamp)
+{
+  geometry_msgs::msg::TwistStamped msg;
+  msg.header.stamp = timestamp;
+  msg.header.frame_id = "gps_link";
+
+  msg.twist.linear.x = std::atof(oxts_tokenized_array[8].c_str());
+  msg.twist.linear.y = std::atof(oxts_tokenized_array[9].c_str());
+  msg.twist.linear.z = std::atof(oxts_tokenized_array[10].c_str());
+
+  msg.twist.angular.x = std::atof(oxts_tokenized_array[20].c_str());
+  msg.twist.angular.y = std::atof(oxts_tokenized_array[21].c_str());
+  msg.twist.angular.z = std::atof(oxts_tokenized_array[22].c_str());
+
+  return msg;
+}
+
 sensor_msgs::msg::Imu Kitti2BagNode::convert_oxts_to_imu_msg(
   const std::vector<std::string> & oxts_tokenized_array,
   const rclcpp::Time & timestamp)
@@ -260,19 +277,19 @@ sensor_msgs::msg::Imu Kitti2BagNode::convert_oxts_to_imu_msg(
                      std::atof(oxts_tokenized_array[5].c_str()));
   msg.orientation = tf2::toMsg(orientation);
 
-  // - wx:    angular rate around x (rad/s)
-  // - wy:    angular rate around y (rad/s)
-  // - wz:    angular rate around z (rad/s)
-  msg.angular_velocity.x = std::atof(oxts_tokenized_array[17].c_str());
-  msg.angular_velocity.y = std::atof(oxts_tokenized_array[18].c_str());
-  msg.angular_velocity.z = std::atof(oxts_tokenized_array[19].c_str());
+  // - wf:    angular rate around forward axis (rad/s)
+  // - wl:    angular rate around leftward axis (rad/s)
+  // - wu:    angular rate around upward axis (rad/s)
+  msg.angular_velocity.x = std::atof(oxts_tokenized_array[20].c_str());
+  msg.angular_velocity.y = std::atof(oxts_tokenized_array[21].c_str());
+  msg.angular_velocity.z = std::atof(oxts_tokenized_array[22].c_str());
 
-  // - ax:    acceleration in x, i.e. in direction of vehicle front (m/s^2)
-  // - ay:    acceleration in y, i.e. in direction of vehicle left (m/s^2)
-  // - az:    acceleration in z, i.e. in direction of vehicle top (m/s^2)
-  msg.linear_acceleration.x = std::atof(oxts_tokenized_array[11].c_str());
-  msg.linear_acceleration.y = std::atof(oxts_tokenized_array[12].c_str());
-  msg.linear_acceleration.z = std::atof(oxts_tokenized_array[13].c_str());
+  // - af:    forward acceleration (m/s^2)
+  // - al:    leftward acceleration (m/s^2)
+  // - au:    upward acceleration (m/s^2)
+  msg.linear_acceleration.x = std::atof(oxts_tokenized_array[14].c_str());
+  msg.linear_acceleration.y = std::atof(oxts_tokenized_array[15].c_str());
+  msg.linear_acceleration.z = std::atof(oxts_tokenized_array[16].c_str());
 
   return msg;
 }
