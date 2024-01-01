@@ -52,27 +52,31 @@ void Kitti2BagNode::on_timer_callback()
 
     if (dir == "image_00") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
-      writer_->write(msg, "kitti/camera/gray/left", now());
+      writer_->write(msg, "kitti/camera/gray/left", timestamp);
     } else if (dir == "image_01") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
-      writer_->write(msg, "kitti/camera/gray/right", now());
+      writer_->write(msg, "kitti/camera/gray/right", timestamp);
     } else if (dir == "image_02") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
-      writer_->write(msg, "kitti/camera/color/left", now());
+      writer_->write(msg, "kitti/camera/color/left", timestamp);
     } else if (dir == "image_03") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
-      writer_->write(msg, "kitti/camera/color/right", now());
+      writer_->write(msg, "kitti/camera/color/right", timestamp);
     } else if (dir == "oxts") {
       std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
       auto gps_msg = convert_oxts_to_gps_msg(oxts_parsed_array, timestamp);
-      writer_->write(gps_msg, "kitti/oxts/gps/fix", now());
+      writer_->write(gps_msg, "kitti/oxts/gps/fix", timestamp);
       auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
-      writer_->write(vel_msg, "kitti/oxts/gps/vel", now());
+      rclcpp::Time tmp1 = rclcpp::Time(timestamp.nanoseconds() + 10);
+      writer_->write(vel_msg, "kitti/oxts/gps/vel", tmp1);
+      // Have to add some random offset to the timestamp, otherwise it will overwrite the previous message
+      // a bug from ros2?
       auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
-      writer_->write(img_msg, "kitti/oxts/imu", now());
+      rclcpp::Time tmp2 = rclcpp::Time(timestamp.nanoseconds() + 10);
+      writer_->write(img_msg, "kitti/oxts/imu", tmp2);
     } else if (dir == "velodyne_points") {
       auto msg = convert_velo_to_msg(filename, timestamp);
-      writer_->write(msg, "kitti/velo", now());
+      writer_->write(msg, "kitti/velo", timestamp);
     }
   }
 
