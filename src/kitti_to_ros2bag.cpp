@@ -63,16 +63,23 @@ void Kitti2BagNode::on_timer_callback()
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
       writer_->write(msg, "kitti/camera/color/right", timestamp);
     } else if (dir == "oxts") {
+      // parse the oxts data
       std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
+
+      // write the GPS data to bag
       auto gps_msg = convert_oxts_to_gps_msg(oxts_parsed_array, timestamp);
       writer_->write(gps_msg, "kitti/oxts/gps/fix", timestamp);
+
+      // write the velocity data to bag
       auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
+      // Have to add some offset to the timestamp, otherwise it will overwrite the previous message
       rclcpp::Time tmp1 = rclcpp::Time(timestamp.nanoseconds() + 10);
       writer_->write(vel_msg, "kitti/oxts/gps/vel", tmp1);
-      // Have to add some random offset to the timestamp, otherwise it will overwrite the previous message
-      // a bug from ros2?
+
+      // write the IMU data to bag
       auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
-      rclcpp::Time tmp2 = rclcpp::Time(timestamp.nanoseconds() + 10);
+      // Have to add some offset to the timestamp, otherwise it will overwrite the previous message
+      rclcpp::Time tmp2 = rclcpp::Time(timestamp.nanoseconds() + 20);
       writer_->write(img_msg, "kitti/oxts/imu", tmp2);
     } else if (dir == "velodyne_points") {
       auto msg = convert_velo_to_msg(filename, timestamp);
@@ -80,7 +87,7 @@ void Kitti2BagNode::on_timer_callback()
     }
   }
 
-  RCLCPP_INFO(this->get_logger(), "Publishing index = %ld", index_);
+  RCLCPP_INFO(this->get_logger(), "Writing index = %ld", index_);
   ++index_;
   if (index_ == max_index_) {
     timer_->cancel();
@@ -317,7 +324,9 @@ sensor_msgs::msg::PointCloud2 Kitti2BagNode::convert_velo_to_msg(
   input_file.seekg(0, std::ios::beg);
   while (input_file.good() && !input_file.eof()) {
     pcl::PointXYZI point;
-    input_file.read((char*) & point.x, 3 * sizeof(float));
+    input_file.read((char*) & point.x, sizeof(float));
+    input_file.read((char*) & point.y, sizeof(float));
+    input_file.read((char*) & point.z, sizeof(float));
     input_file.read((char*) & point.intensity, sizeof(float));
     cloud.push_back(point);
   }
