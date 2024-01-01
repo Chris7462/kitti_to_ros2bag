@@ -1,3 +1,5 @@
 kitti_to_ros2bag_node:
   ros__parameters:
     kitti_path: "/data/Kitti/raw/2011_09_29_drive_0071_sync/"
+    dirs: ["image_00", "image_01", "image_02", "image_03", "oxts", "velodyne_points"] # dirs that you want to publish
+    output_bag_name: "2011_09_29_drive_0071_sync_bag"

@@ -13,6 +13,11 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
 
 add_executable(kitti_to_ros2bag_node
   src/kitti_to_ros2bag_node.cpp
@@ -20,10 +25,18 @@ add_executable(kitti_to_ros2bag_node
 
 target_include_directories(kitti_to_ros2bag_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  ${OpenCV_INCLUDE_DIRS})
 
 ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
-  rclcpp)
+  rclcpp
+  rosbag2_cpp
+  geometry_msgs
+  sensor_msgs
+  cv_bridge)
+
+target_link_libraries(kitti_to_ros2bag_node PUBLIC
+  opencv_imgcodecs)
 
 target_compile_features(kitti_to_ros2bag_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
