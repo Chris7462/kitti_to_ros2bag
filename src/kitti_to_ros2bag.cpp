@@ -7,10 +7,15 @@
 // OpenCV header
 #include <opencv2/imgcodecs.hpp>
 
+// PCL header
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+
 // ROS header
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include "kitti_to_ros2bag/kitti_to_ros2bag.hpp"
 
@@ -66,7 +71,8 @@ void Kitti2BagNode::on_timer_callback()
       auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
       writer_->write(img_msg, "kitti/oxts/imu", now());
     } else if (dir == "velodyne_points") {
-      // writer_->create_topic({"kitti/velo", "sensor_msgs/msg/PointCloud2", rmw_get_serialization_format(), ""})
+      auto msg = convert_velo_to_msg(filename, timestamp);
+      writer_->write(msg, "kitti/velo", now());
     }
   }
 
@@ -290,6 +296,32 @@ sensor_msgs::msg::Imu Kitti2BagNode::convert_oxts_to_imu_msg(
   msg.linear_acceleration.x = std::atof(oxts_tokenized_array[14].c_str());
   msg.linear_acceleration.y = std::atof(oxts_tokenized_array[15].c_str());
   msg.linear_acceleration.z = std::atof(oxts_tokenized_array[16].c_str());
+
+  return msg;
+}
+
+sensor_msgs::msg::PointCloud2 Kitti2BagNode::convert_velo_to_msg(
+  const fs::path & file_path, const rclcpp::Time & timestamp)
+{
+  pcl::PointCloud<pcl::PointXYZI> cloud;
+  std::fstream input_file(file_path, std::ios::in | std::ios::binary);
+  if (!input_file.good()) {
+    RCLCPP_ERROR(this->get_logger(), "Could not read Velodyne's point cloud. Check your file path!");
+    rclcpp::shutdown();
+  }
+
+  input_file.seekg(0, std::ios::beg);
+  while (input_file.good() && !input_file.eof()) {
+    pcl::PointXYZI point;
+    input_file.read((char*) & point.x, 3 * sizeof(float));
+    input_file.read((char*) & point.intensity, sizeof(float));
+    cloud.push_back(point);
+  }
+
+  sensor_msgs::msg::PointCloud2 msg;
+  pcl::toROSMsg(cloud, msg);
+  msg.header.frame_id = "velo_link";
+  msg.header.stamp = timestamp;
 
   return msg;
 }

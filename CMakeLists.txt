@@ -19,7 +19,9 @@ find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(pcl_conversions REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
 
 add_executable(kitti_to_ros2bag_node
   src/kitti_to_ros2bag_node.cpp
@@ -28,7 +30,8 @@ add_executable(kitti_to_ros2bag_node
 target_include_directories(kitti_to_ros2bag_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
-  ${OpenCV_INCLUDE_DIRS})
+  ${OpenCV_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS})
 
 ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
   rclcpp
@@ -37,10 +40,12 @@ ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
   sensor_msgs
   tf2
   tf2_geometry_msgs
-  cv_bridge)
+  cv_bridge
+  pcl_conversions)
 
 target_link_libraries(kitti_to_ros2bag_node PUBLIC
-  opencv_imgcodecs)
+  opencv_imgcodecs
+  ${PCL_LIBRARIES})
 
 target_compile_features(kitti_to_ros2bag_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 

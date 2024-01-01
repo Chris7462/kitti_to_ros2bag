@@ -49,6 +49,9 @@ private:
     const std::vector<std::string> & oxts_tokenized_array,
     const rclcpp::Time & timestamp);
 
+  sensor_msgs::msg::PointCloud2 convert_velo_to_msg(
+    const fs::path & file_path, const rclcpp::Time & timestamp);
+
   size_t index_;
   size_t max_index_;
 
