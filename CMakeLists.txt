@@ -16,6 +16,8 @@ find_package(rclcpp REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 
@@ -33,6 +35,8 @@ ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
   rosbag2_cpp
   geometry_msgs
   sensor_msgs
+  tf2
+  tf2_geometry_msgs
   cv_bridge)
 
 target_link_libraries(kitti_to_ros2bag_node PUBLIC

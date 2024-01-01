@@ -3,9 +3,9 @@
 #include <fstream>
 #include <sstream>
 
-#include <sensor_msgs/msg/image.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <sensor_msgs/msg/nav_sat_fix.hpp>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 
@@ -37,25 +37,6 @@ Kitti2BagNode::Kitti2BagNode()
   writer_ = std::make_unique<rosbag2_cpp::Writer>();
   writer_->open(output_bag_name);
 
-  // create topic for the bag
-  for (auto & dir : dirs_) {
-    if (dir == "image_00") {
-      writer_->create_topic({"kitti/camera_gray_left", "sensor_msgs/msg/Image", rmw_get_serialization_format(), ""});
-//  } else if (dir == "image_01") {
-//    writer_->create_topic({"kitti/camera_gray_right", "sensor_msgs/msg/Image", rmw_get_serialization_format(), ""});
-//  } else if (dir == "image_02") {
-//    writer_->create_topic({"kitti/camera_color_left", "sensor_msgs/msg/Image", rmw_get_serialization_format(), ""});
-//  } else if (dir == "image_03") {
-//    writer_->create_topic({"kitti/camera_color_right", "sensor_msgs/msg/Image", rmw_get_serialization_format(), ""});
-//  } else if (dir == "oxts") {
-//    writer_->create_topic({"kitti/oxts/imu", "sensor_msgs/msg/Imu", rmw_get_serialization_format(), ""});
-//    writer_->create_topic({"kitti/oxts/gps_fix", "sensor_msgs/msg/NavSatFix", rmw_get_serialization_format(), ""});
-//    writer_->create_topic({"kitti/oxts/vel", "geometry_msgs/msg/TwistStamped", rmw_get_serialization_format(), ""});
-//  } else if (dir == "velodyne_points") {
-//    writer_->create_topic({"kitti/velo", "sensor_msgs/msg/PointCloud2", rmw_get_serialization_format(), ""});
-    }
-  }
-
   timer_ = create_wall_timer(100ms, std::bind(&Kitti2BagNode::on_timer_callback, this));
 };
 
@@ -63,35 +44,31 @@ void Kitti2BagNode::on_timer_callback()
 {
   for (size_t i = 0; i < dirs_.size(); ++i) {
     const std::string & dir = dirs_[i];
-    fs::path file_path = kitti_path_ / dir / "data" / filenames_[i][index_];
+    fs::path filename = kitti_path_ / dir / "data" / filenames_[i][index_];
     rclcpp::Time timestamp = timestamps_[i][index_];
 
     if (dir == "image_00") {
-      cv::Mat image = cv::imread(file_path, cv::IMREAD_UNCHANGED);
-      auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "mono8", image).toImageMsg();
-      msg->header.frame_id = "cam0";
-      msg->header.stamp = timestamp;
-      writer_->write(*msg, "kitti/camera_gray_left", timestamp);
+      auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
+      writer_->write(msg, "kitti/camera_gray_left", timestamp);
     } else if (dir == "image_01") {
-      cv::Mat image = cv::imread(file_path, cv::IMREAD_GRAYSCALE);
-      auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "mono8", image).toImageMsg();
-      msg->header.frame_id = "cam1";
-      msg->header.stamp = timestamp;
-      writer_->write(*msg, "kitti/camera_gray_right", timestamp);
+      auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
+      writer_->write(msg, "kitti/camera_gray_right", timestamp);
     } else if (dir == "image_02") {
-      cv::Mat image = cv::imread(file_path, cv::IMREAD_UNCHANGED);
-      auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image).toImageMsg();
-      msg->header.frame_id = "cam2";
-      msg->header.stamp = timestamp;
-      writer_->write(*msg, "kitti/camera_color_left", timestamp);
+      auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
+      writer_->write(msg, "kitti/camera_color_left", timestamp);
     } else if (dir == "image_03") {
-      cv::Mat image = cv::imread(file_path, cv::IMREAD_COLOR);
-      auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image).toImageMsg();
-      msg->header.frame_id = "cam3";
-      msg->header.stamp = timestamp;
-      writer_->write(*msg, "kitti/camera_color_right", timestamp);
+      auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
+      writer_->write(msg, "kitti/camera_color_right", timestamp);
     } else if (dir == "oxts") {
+      std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
+      auto gps_msg = convert_oxts_to_gps_msg(oxts_parsed_array, timestamp);
+      writer_->write(gps_msg, "kitti/oxts/gps_fix", timestamp);
+      auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
+      writer_->write(img_msg, "kitti/oxts/imu", timestamp);
+//    auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
+      // writer_->create_topic({"kitti/oxts/vel", "geometry_msgs/msg/TwistStamped", rmw_get_serialization_format(), ""});
     } else if (dir == "velodyne_points") {
+      // writer_->create_topic({"kitti/velo", "sensor_msgs/msg/PointCloud2", rmw_get_serialization_format(), ""})
     }
   }
 
@@ -188,4 +165,114 @@ void Kitti2BagNode::get_all_timestamps()
     }
     timestamps_.push_back(timestamps_vec);
   }
+}
+
+sensor_msgs::msg::Image Kitti2BagNode::convert_image_to_msg(
+  const fs::path & file_path, const rclcpp::Time & timestamp,
+  const std::string & encoding, const std::string & frame_id)
+{
+  cv::Mat image = cv::imread(file_path, cv::IMREAD_UNCHANGED);
+  auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), encoding, image).toImageMsg();
+  msg->header.frame_id = frame_id;
+  msg->header.stamp = timestamp;
+
+  return *msg;
+}
+
+std::vector<std::string> Kitti2BagNode::parse_file_data(const fs::path & file_path, std::string delimiter)
+{
+  std::ifstream input_file(file_path);
+
+  if (!input_file.good()) {
+    RCLCPP_INFO(this->get_logger(), "Could not read OXTS data. Check your file path!");
+    rclcpp::shutdown();
+  }
+
+  std::string file_content_string;
+  if (input_file) {
+    std::ostringstream ss;
+    ss << input_file.rdbuf(); // reading data
+    file_content_string = ss.str();
+  }
+
+  //https://www.codegrepper.com/code-examples/whatever/c%2B%2B+how+to+tokenize+a+string
+  std::vector<std::string> tokens;
+  size_t first = 0;
+  while (first < file_content_string.size()) {
+    size_t second = file_content_string.find_first_of(delimiter, first);
+    //first has index of start of token
+    //second has index of end of token + 1;
+    if (second == std::string::npos) {
+      second = file_content_string.size();
+    }
+    std::string token = file_content_string.substr(first, second-first);
+    tokens.push_back(token);
+    first = second + 1;
+  }
+
+  return tokens;
+}
+
+sensor_msgs::msg::NavSatFix Kitti2BagNode::convert_oxts_to_gps_msg(
+  const std::vector<std::string> & oxts_tokenized_array,
+  const rclcpp::Time & timestamp)
+{
+  sensor_msgs::msg::NavSatFix msg;
+  msg.header.stamp = timestamp;
+  msg.header.frame_id = "gps_link";
+
+  msg.status.status  = sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX;
+  msg.status.service = sensor_msgs::msg::NavSatStatus::SERVICE_GPS;
+
+  msg.latitude  = std::atof(oxts_tokenized_array[0].c_str());
+  msg.longitude = std::atof(oxts_tokenized_array[1].c_str());
+  msg.altitude  = std::atof(oxts_tokenized_array[2].c_str());
+
+  msg.position_covariance[0] = std::atof(oxts_tokenized_array[23].c_str());
+  msg.position_covariance[1] = 0.0f;
+  msg.position_covariance[2] = 0.0f;
+  msg.position_covariance[3] = 0.0f;
+  msg.position_covariance[4] = std::atof(oxts_tokenized_array[23].c_str());
+  msg.position_covariance[5] = 0.0f;
+  msg.position_covariance[6] = 0.0f;
+  msg.position_covariance[7] = 0.0f;
+  msg.position_covariance[8] = std::atof(oxts_tokenized_array[23].c_str());
+
+  msg.position_covariance_type = sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
+
+  return msg;
+}
+
+sensor_msgs::msg::Imu Kitti2BagNode::convert_oxts_to_imu_msg(
+  const std::vector<std::string> & oxts_tokenized_array,
+  const rclcpp::Time & timestamp)
+{
+  sensor_msgs::msg::Imu msg;
+  msg.header.stamp = timestamp;
+  msg.header.frame_id = "imu_link";
+
+  // - roll:  roll angle (rad),  0 = level, positive = left side up,      range: -pi   .. +pi
+  // - pitch: pitch angle (rad), 0 = level, positive = front down,        range: -pi/2 .. +pi/2
+  // - yaw:   heading (rad),     0 = east,  positive = counter clockwise, range: -pi   .. +pi
+  tf2::Quaternion orientation;
+  orientation.setRPY(std::atof(oxts_tokenized_array[3].c_str()),
+                     std::atof(oxts_tokenized_array[4].c_str()),
+                     std::atof(oxts_tokenized_array[5].c_str()));
+  msg.orientation = tf2::toMsg(orientation);
+
+  // - wx:    angular rate around x (rad/s)
+  // - wy:    angular rate around y (rad/s)
+  // - wz:    angular rate around z (rad/s)
+  msg.angular_velocity.x = std::atof(oxts_tokenized_array[17].c_str());
+  msg.angular_velocity.y = std::atof(oxts_tokenized_array[18].c_str());
+  msg.angular_velocity.z = std::atof(oxts_tokenized_array[19].c_str());
+
+  // - ax:    acceleration in x, i.e. in direction of vehicle front (m/s^2)
+  // - ay:    acceleration in y, i.e. in direction of vehicle left (m/s^2)
+  // - az:    acceleration in z, i.e. in direction of vehicle top (m/s^2)
+  msg.linear_acceleration.x = std::atof(oxts_tokenized_array[11].c_str());
+  msg.linear_acceleration.y = std::atof(oxts_tokenized_array[12].c_str());
+  msg.linear_acceleration.z = std::atof(oxts_tokenized_array[13].c_str());
+
+  return msg;
 }
