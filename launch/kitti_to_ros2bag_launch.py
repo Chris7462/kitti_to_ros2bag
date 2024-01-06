@@ -18,7 +18,6 @@ def generate_launch_description():
         parameters=[params]
     )
 
-
     return LaunchDescription([
         kitti_to_ros2bag_node
     ])

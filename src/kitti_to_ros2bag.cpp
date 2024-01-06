@@ -41,7 +41,7 @@ Kitti2BagNode::Kitti2BagNode()
   writer_->open(output_bag_name);
 
   timer_ = create_wall_timer(100ms, std::bind(&Kitti2BagNode::on_timer_callback, this));
-};
+}
 
 void Kitti2BagNode::on_timer_callback()
 {
@@ -108,7 +108,8 @@ void Kitti2BagNode::get_filenames()
           }
         }
         // sort the filename
-        std::sort(filenames_vec.begin(), filenames_vec.end(),
+        std::sort(
+          filenames_vec.begin(), filenames_vec.end(),
           [](const auto & lhs, const auto & rhs) {
             return lhs < rhs;
           });
@@ -127,11 +128,12 @@ void Kitti2BagNode::get_filenames()
   }
 
   // make sure all folders have the same number of files
-  for (size_t i = 0; i < filenames_.size()-1; ++i) {
-    if (filenames_[i].size() != filenames_[i+1].size()) {
-      RCLCPP_ERROR(get_logger(),
+  for (size_t i = 0; i < filenames_.size() - 1; ++i) {
+    if (filenames_[i].size() != filenames_[i + 1].size()) {
+      RCLCPP_ERROR(
+        get_logger(),
         "File size in %s (%ld) and %s (%ld) don't match.",
-        dirs_[i].c_str(), filenames_[i].size(), dirs_[i+1].c_str(), filenames_[i+1].size());
+        dirs_[i].c_str(), filenames_[i].size(), dirs_[i + 1].c_str(), filenames_[i + 1].size());
       rclcpp::shutdown();
     }
   }
@@ -174,7 +176,8 @@ void Kitti2BagNode::get_all_timestamps()
       auto timePoint = std::chrono::system_clock::from_time_t(std::mktime(&tm));
 
       // Convert time_point to epoch time (seconds since 1970-01-01)
-      auto epochTime = std::chrono::duration_cast<std::chrono::seconds>(timePoint.time_since_epoch()).count();
+      auto epochTime =
+        std::chrono::duration_cast<std::chrono::seconds>(timePoint.time_since_epoch()).count();
 
       timestamps_vec.push_back(rclcpp::Time(epochTime, nanoseconds));
     }
@@ -194,7 +197,8 @@ sensor_msgs::msg::Image Kitti2BagNode::convert_image_to_msg(
   return *msg;
 }
 
-std::vector<std::string> Kitti2BagNode::parse_file_data(const fs::path & file_path, std::string delimiter)
+std::vector<std::string> Kitti2BagNode::parse_file_data(
+  const fs::path & file_path, std::string delimiter)
 {
   std::ifstream input_file(file_path);
 
@@ -220,7 +224,7 @@ std::vector<std::string> Kitti2BagNode::parse_file_data(const fs::path & file_pa
     if (second == std::string::npos) {
       second = file_content_string.size();
     }
-    std::string token = file_content_string.substr(first, second-first);
+    std::string token = file_content_string.substr(first, second - first);
     tokens.push_back(token);
     first = second + 1;
   }
@@ -236,12 +240,12 @@ sensor_msgs::msg::NavSatFix Kitti2BagNode::convert_oxts_to_gps_msg(
   msg.header.stamp = timestamp;
   msg.header.frame_id = "gps_link";
 
-  msg.status.status  = sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX;
+  msg.status.status = sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX;
   msg.status.service = sensor_msgs::msg::NavSatStatus::SERVICE_GPS;
 
-  msg.latitude  = std::atof(oxts_tokenized_array[0].c_str());
+  msg.latitude = std::atof(oxts_tokenized_array[0].c_str());
   msg.longitude = std::atof(oxts_tokenized_array[1].c_str());
-  msg.altitude  = std::atof(oxts_tokenized_array[2].c_str());
+  msg.altitude = std::atof(oxts_tokenized_array[2].c_str());
 
   msg.position_covariance[0] = std::atof(oxts_tokenized_array[23].c_str());
   msg.position_covariance[1] = 0.0f;
@@ -289,9 +293,10 @@ sensor_msgs::msg::Imu Kitti2BagNode::convert_oxts_to_imu_msg(
   // - pitch: pitch angle (rad), 0 = level, positive = front down,        range: -pi/2 .. +pi/2
   // - yaw:   heading (rad),     0 = east,  positive = counter clockwise, range: -pi   .. +pi
   tf2::Quaternion orientation;
-  orientation.setRPY(std::atof(oxts_tokenized_array[3].c_str()),
-                     std::atof(oxts_tokenized_array[4].c_str()),
-                     std::atof(oxts_tokenized_array[5].c_str()));
+  orientation.setRPY(
+    std::atof(oxts_tokenized_array[3].c_str()),
+    std::atof(oxts_tokenized_array[4].c_str()),
+    std::atof(oxts_tokenized_array[5].c_str()));
   msg.orientation = tf2::toMsg(orientation);
 
   // - wf:    angular rate around forward axis (rad/s)
@@ -317,17 +322,19 @@ sensor_msgs::msg::PointCloud2 Kitti2BagNode::convert_velo_to_msg(
   pcl::PointCloud<pcl::PointXYZI> cloud;
   std::fstream input_file(file_path, std::ios::in | std::ios::binary);
   if (!input_file.good()) {
-    RCLCPP_ERROR(this->get_logger(), "Could not read Velodyne's point cloud. Check your file path!");
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Could not read Velodyne's point cloud. Check your file path!");
     rclcpp::shutdown();
   }
 
   input_file.seekg(0, std::ios::beg);
   while (input_file.good() && !input_file.eof()) {
     pcl::PointXYZI point;
-    input_file.read((char*) & point.x, sizeof(float));
-    input_file.read((char*) & point.y, sizeof(float));
-    input_file.read((char*) & point.z, sizeof(float));
-    input_file.read((char*) & point.intensity, sizeof(float));
+    input_file.read((char *) &point.x, sizeof(float));
+    input_file.read((char *) &point.y, sizeof(float));
+    input_file.read((char *) &point.z, sizeof(float));
+    input_file.read((char *) &point.intensity, sizeof(float));
     cloud.push_back(point);
   }
 
