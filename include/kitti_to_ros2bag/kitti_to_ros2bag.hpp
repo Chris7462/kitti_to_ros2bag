@@ -9,6 +9,7 @@
 // ROS header
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
@@ -22,6 +23,7 @@ struct CalibrationData
 {
   std::array<double, 9> K;
   std::vector<double> D;
+  std::array<double, 2> S_rect;
   std::array<double, 9> R_rect;
   std::array<double, 12> P_rect;
 };
@@ -39,7 +41,6 @@ private:
 
   void get_filenames();
   void get_all_timestamps();
-  void convert_calib_to_msg(fs::path calib_file, std::vector<CalibrationData> & calib);
 
   sensor_msgs::msg::Image convert_image_to_msg(
     const fs::path & file_path, const rclcpp::Time & timestamp,
@@ -62,13 +63,16 @@ private:
   sensor_msgs::msg::PointCloud2 convert_velo_to_msg(
     const fs::path & file_path, const rclcpp::Time & timestamp);
 
+  sensor_msgs::msg::CameraInfo convert_calib_to_msg(
+    const std::string & calib_file, const rclcpp::Time & timestamp,
+    const std::string & id, const std::string & frame_id);
+
   size_t index_;
   size_t max_index_;
 
   fs::path kitti_path_;
+  std::string calib_folder_;
   std::vector<std::string> dirs_;
   std::vector<std::vector<std::string>> filenames_;
   std::vector<std::vector<rclcpp::Time>> timestamps_;
-
-  std::vector<CalibrationData> calib_;
 };
