@@ -17,6 +17,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+// local header
 #include "kitti_to_ros2bag/kitti_to_ros2bag.hpp"
 
 
@@ -25,14 +26,10 @@ using namespace std::chrono_literals;
 Kitti2BagNode::Kitti2BagNode()
 : Node("kitti2bag_node"), index_{0}
 {
-  declare_parameter("kitti_path", rclcpp::PARAMETER_STRING);
-  kitti_path_ = get_parameter("kitti_path").as_string();
-
-  declare_parameter("dirs", rclcpp::PARAMETER_STRING_ARRAY);
-  dirs_ = get_parameter("dirs").as_string_array();
-
-  declare_parameter("output_bag_name", rclcpp::PARAMETER_STRING);
-  std::string output_bag_name = get_parameter("output_bag_name").as_string();
+  kitti_path_ = declare_parameter("kitti_path", fs::path());
+  calib_folder_ = declare_parameter("calib_folder", std::string());
+  dirs_ = declare_parameter("dirs", std::vector<std::string>());
+  std::string output_bag_name = declare_parameter("output_bag_name", std::string());
 
   get_filenames();
   get_all_timestamps();
@@ -45,6 +42,9 @@ Kitti2BagNode::Kitti2BagNode()
 
 void Kitti2BagNode::on_timer_callback()
 {
+  fs::path calib_file = kitti_path_ / calib_folder_ / "calib_cam_to_cam.txt";
+  auto calib_flag = fs::exists(calib_file);
+
   for (size_t i = 0; i < dirs_.size(); ++i) {
     const std::string & dir = dirs_[i];
     fs::path filename = kitti_path_ / dir / "data" / filenames_[i][index_];
@@ -52,16 +52,37 @@ void Kitti2BagNode::on_timer_callback()
 
     if (dir == "image_00") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
-      writer_->write(msg, "kitti/camera/gray/left", timestamp);
+      writer_->write(msg, "kitti/camera/gray/left/image_raw", timestamp);
+      if (calib_flag) {
+        auto msg = convert_calib_to_msg(calib_file, timestamp, "0", "cam0_link");
+        // Have to add some offset to the timestamp, otherwise it will overwrite the previous message
+        rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
+        writer_->write(msg, "kitti/camera/gray/left/camera_info", tmp);
+      }
     } else if (dir == "image_01") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
-      writer_->write(msg, "kitti/camera/gray/right", timestamp);
+      writer_->write(msg, "kitti/camera/gray/right/image_raw", timestamp);
+      if (calib_flag) {
+        auto msg = convert_calib_to_msg(calib_file, timestamp, "1", "cam1_link");
+        rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
+        writer_->write(msg, "kitti/camera/gray/right/camera_info", tmp);
+      }
     } else if (dir == "image_02") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
-      writer_->write(msg, "kitti/camera/color/left", timestamp);
+      writer_->write(msg, "kitti/camera/color/left/image_raw", timestamp);
+      if (calib_flag) {
+        auto msg = convert_calib_to_msg(calib_file, timestamp, "2", "cam2_link");
+        rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
+        writer_->write(msg, "kitti/camera/color/left/camera_info", tmp);
+      }
     } else if (dir == "image_03") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
-      writer_->write(msg, "kitti/camera/color/right", timestamp);
+      writer_->write(msg, "kitti/camera/color/right/image_raw", timestamp);
+      if (calib_flag) {
+        auto msg = convert_calib_to_msg(calib_file, timestamp, "3", "cam3_link");
+        rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
+        writer_->write(msg, "kitti/camera/color/right/camera_info", tmp);
+      }
     } else if (dir == "oxts") {
       // parse the oxts data
       std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
@@ -72,13 +93,11 @@ void Kitti2BagNode::on_timer_callback()
 
       // write the velocity data to bag
       auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
-      // Have to add some offset to the timestamp, otherwise it will overwrite the previous message
       rclcpp::Time tmp1 = rclcpp::Time(timestamp.nanoseconds() + 10);
       writer_->write(vel_msg, "kitti/oxts/gps/vel", tmp1);
 
       // write the IMU data to bag
       auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
-      // Have to add some offset to the timestamp, otherwise it will overwrite the previous message
       rclcpp::Time tmp2 = rclcpp::Time(timestamp.nanoseconds() + 20);
       writer_->write(img_msg, "kitti/oxts/imu", tmp2);
     } else if (dir == "velodyne_points") {
@@ -344,4 +363,80 @@ sensor_msgs::msg::PointCloud2 Kitti2BagNode::convert_velo_to_msg(
   msg.header.stamp = timestamp;
 
   return msg;
+}
+
+sensor_msgs::msg::CameraInfo Kitti2BagNode::convert_calib_to_msg(
+  const std::string & calib_file, const rclcpp::Time & timestamp,
+  const std::string & id, const std::string & frame_id)
+{
+  // open the file
+  std::ifstream input_file(calib_file);
+  if (!input_file.is_open()) {
+    RCLCPP_ERROR(get_logger(), "Unable to open file calib_cam_to_cam.txt");
+    rclcpp::shutdown();
+  }
+
+  CalibrationData calib;
+
+  std::string line;
+  std::string tmp_str;
+  while (std::getline(input_file, line)) {
+    std::size_t pos = line.find(':');
+    if (pos != std::string::npos) {
+      std::string key = line.substr(0, pos);
+      std::string value = line.substr(pos + 1);
+
+      // Trim leading and trailing whitespaces
+      key.erase(0, key.find_first_not_of(" \t\r\n"));
+      key.erase(key.find_last_not_of(" \t\r\n") + 1);
+      value.erase(0, value.find_first_not_of(" \t\r\n"));
+      value.erase(value.find_last_not_of(" \t\r\n") + 1);
+
+      // get the value of the calibration and put them into stringstream
+      std::stringstream ss(value);
+
+      int j = 0;
+      if (key == "K_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib.K[j] = std::stod(tmp_str);
+          ++j;
+        }
+      } else if (key == "D_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib.D.push_back(std::stod(tmp_str));
+        }
+      } else if (key == "S_rect_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib.S_rect[j] = std::stod(tmp_str);
+          ++j;
+        }
+      } else if (key == "R_rect_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib.R_rect[j] = std::stod(tmp_str);
+          ++j;
+        }
+      } else if (key == "P_rect_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib.P_rect[j] = std::stod(tmp_str);
+          ++j;
+        }
+      }
+    }
+  }
+  // Close the file
+  input_file.close();
+
+  // Ready to output to message
+  sensor_msgs::msg::CameraInfo calib_msg;
+  calib_msg.header.frame_id = frame_id;
+  calib_msg.header.stamp = timestamp;
+  calib_msg.width = calib.S_rect[0];
+  calib_msg.height = calib.S_rect[1];
+  calib_msg.distortion_model = "plumb_bob";
+  calib_msg.k = calib.K;
+  calib_msg.r = calib.R_rect;
+  calib_msg.d = calib.D;
+  calib_msg.p = calib.P_rect;
+
+  return calib_msg;
 }
