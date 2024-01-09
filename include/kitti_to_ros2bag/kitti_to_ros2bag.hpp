@@ -2,6 +2,7 @@
 
 // C++ header
 #include <vector>
+#include <array>
 #include <string>
 #include <filesystem>
 
@@ -17,6 +18,14 @@
 
 namespace fs = std::filesystem;
 
+struct CalibrationData
+{
+  std::array<double, 9> K;
+  std::vector<double> D;
+  std::array<double, 9> R_rect;
+  std::array<double, 12> P_rect;
+};
+
 class Kitti2BagNode : public rclcpp::Node
 {
 public:
@@ -30,6 +39,7 @@ private:
 
   void get_filenames();
   void get_all_timestamps();
+  void convert_calib_to_msg(fs::path calib_file, std::vector<CalibrationData> & calib);
 
   sensor_msgs::msg::Image convert_image_to_msg(
     const fs::path & file_path, const rclcpp::Time & timestamp,
@@ -59,4 +69,6 @@ private:
   std::vector<std::string> dirs_;
   std::vector<std::vector<std::string>> filenames_;
   std::vector<std::vector<rclcpp::Time>> timestamps_;
+
+  std::vector<CalibrationData> calib_;
 };

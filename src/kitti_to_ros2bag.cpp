@@ -3,6 +3,8 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <regex>
+#include <iostream>
 
 // OpenCV header
 #include <opencv2/imgcodecs.hpp>
@@ -16,26 +18,29 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/msg/camera_info.hpp>
 
+// local header
 #include "kitti_to_ros2bag/kitti_to_ros2bag.hpp"
 
 
 using namespace std::chrono_literals;
 
 Kitti2BagNode::Kitti2BagNode()
-: Node("kitti2bag_node"), index_{0}
+: Node("kitti2bag_node"), index_{0}, calib_(4, CalibrationData())
 {
-  declare_parameter("kitti_path", rclcpp::PARAMETER_STRING);
-  kitti_path_ = get_parameter("kitti_path").as_string();
-
-  declare_parameter("dirs", rclcpp::PARAMETER_STRING_ARRAY);
-  dirs_ = get_parameter("dirs").as_string_array();
-
-  declare_parameter("output_bag_name", rclcpp::PARAMETER_STRING);
-  std::string output_bag_name = get_parameter("output_bag_name").as_string();
+  kitti_path_ = declare_parameter("kitti_path", fs::path());
+  dirs_ = declare_parameter("dirs", std::vector<std::string>());
+  std::string output_bag_name = declare_parameter("output_bag_name", std::string());
 
   get_filenames();
   get_all_timestamps();
+
+  fs::path calib_path = kitti_path_ / declare_parameter("calib_folder", fs::path());
+  auto calib_file = calib_path / "calib_cam_to_cam.txt";
+  if (fs::exists(calib_file)) {
+    convert_calib_to_msg(calib_file, calib_);
+  }
 
   writer_ = std::make_unique<rosbag2_cpp::Writer>();
   writer_->open(output_bag_name);
@@ -45,6 +50,17 @@ Kitti2BagNode::Kitti2BagNode()
 
 void Kitti2BagNode::on_timer_callback()
 {
+
+  sensor_msgs::msg::CameraInfo calib_msg;
+//calib_msg.header.frame_id = ;
+//calib_msg.width = ;
+//calib_msg.height = ;
+//calib_msg.distortion_model = "plumb_bob";
+//calib_msg.k = calib_[0].K;
+//calib_msg.r = calib_[0].R_rect;
+//calib_msg.d = calib_[0].D;
+//calib_msg.p = calib_[0].P_rect;
+
   for (size_t i = 0; i < dirs_.size(); ++i) {
     const std::string & dir = dirs_[i];
     fs::path filename = kitti_path_ / dir / "data" / filenames_[i][index_];
@@ -52,16 +68,17 @@ void Kitti2BagNode::on_timer_callback()
 
     if (dir == "image_00") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
-      writer_->write(msg, "kitti/camera/gray/left", timestamp);
+      writer_->write(msg, "kitti/camera/gray/left/image_raw", timestamp);
+    //writer_->write(msg, "kitti/camera/gray/left/camera_info", timestamp);
     } else if (dir == "image_01") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
-      writer_->write(msg, "kitti/camera/gray/right", timestamp);
+      writer_->write(msg, "kitti/camera/gray/right/image_raw", timestamp);
     } else if (dir == "image_02") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
-      writer_->write(msg, "kitti/camera/color/left", timestamp);
+      writer_->write(msg, "kitti/camera/color/left/image_raw", timestamp);
     } else if (dir == "image_03") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
-      writer_->write(msg, "kitti/camera/color/right", timestamp);
+      writer_->write(msg, "kitti/camera/color/right/image_raw", timestamp);
     } else if (dir == "oxts") {
       // parse the oxts data
       std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
@@ -344,4 +361,67 @@ sensor_msgs::msg::PointCloud2 Kitti2BagNode::convert_velo_to_msg(
   msg.header.stamp = timestamp;
 
   return msg;
+}
+
+void  Kitti2BagNode::convert_calib_to_msg(fs::path calib_file, std::vector<CalibrationData> & calib)
+{
+  // open the file
+  std::ifstream input_file(calib_file);
+  if (!input_file.is_open()) {
+    RCLCPP_ERROR(get_logger(), "Unable to open file calib_cam_to_cam.txt");
+    rclcpp::shutdown();
+  }
+
+  int i = 0;
+  std::string line;
+  std::string tmp_str;
+  while (std::getline(input_file, line)) {
+    std::size_t pos = line.find(':');
+    if (pos != std::string::npos) {
+      std::string key = line.substr(0, pos);
+      std::string value = line.substr(pos + 1);
+
+      // Trim leading and trailing whitespaces
+      key.erase(0, key.find_first_not_of(" \t\r\n"));
+      key.erase(key.find_last_not_of(" \t\r\n") + 1);
+      value.erase(0, value.find_first_not_of(" \t\r\n"));
+      value.erase(value.find_last_not_of(" \t\r\n") + 1);
+      std::stringstream ss(value);
+
+      std::string id = std::to_string(i);
+      int j = 0;
+
+      if (key == "K_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib[i].K[j] = std::stod(tmp_str);
+          ++j;
+        }
+      } else if (key == "D_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib[i].D[j] = std::stod(tmp_str);
+          ++j;
+        }
+      } else if (key == "R_rect_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib[i].R_rect[j] = std::stod(tmp_str);
+          ++j;
+        }
+      } else if (key == "P_rect_0" + id) {
+        while (getline(ss, tmp_str, ' ')) {
+          calib[i].P_rect[j] = std::stod(tmp_str);
+          ++j;
+        }
+        ++i;
+      }
+    }
+  }
+
+  // Close the file
+  input_file.close();
+
+//std::cout << "K = " << calib[0].K[0] << std::endl;
+//std::cout << "K = " << calib[0].K[1] << std::endl;
+
+//std::cout << "R_rect_03 = " << calib[3].R_rect[1] << std::endl;
+//std::cout << "P_rect_03 = " << calib[3].P_rect[2] << std::endl;
 }
