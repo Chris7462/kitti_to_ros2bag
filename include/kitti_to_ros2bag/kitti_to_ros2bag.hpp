@@ -71,6 +71,7 @@ private:
   size_t max_index_;
 
   fs::path kitti_path_;
+  std::string data_folder_;
   std::string calib_folder_;
   std::vector<std::string> dirs_;
   std::vector<std::vector<std::string>> filenames_;

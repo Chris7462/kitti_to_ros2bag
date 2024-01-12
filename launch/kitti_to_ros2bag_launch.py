@@ -10,6 +10,7 @@ def generate_launch_description():
     params = join(
         get_package_share_directory('kitti_to_ros2bag'), 'params', 'kitti_to_ros2bag.yaml'
     )
+
     kitti_to_ros2bag_node = Node(
         package='kitti_to_ros2bag',
         executable='kitti_to_ros2bag_node',

@@ -27,6 +27,7 @@ Kitti2BagNode::Kitti2BagNode()
 : Node("kitti2bag_node"), index_{0}
 {
   kitti_path_ = declare_parameter("kitti_path", fs::path());
+  data_folder_ = declare_parameter("data_folder", std::string());
   calib_folder_ = declare_parameter("calib_folder", std::string());
   dirs_ = declare_parameter("dirs", std::vector<std::string>());
   std::string output_bag_name = declare_parameter("output_bag_name", std::string());
@@ -47,7 +48,7 @@ void Kitti2BagNode::on_timer_callback()
 
   for (size_t i = 0; i < dirs_.size(); ++i) {
     const std::string & dir = dirs_[i];
-    fs::path filename = kitti_path_ / dir / "data" / filenames_[i][index_];
+    fs::path filename = kitti_path_ / data_folder_ / dir / "data" / filenames_[i][index_];
     rclcpp::Time timestamp = timestamps_[i][index_];
 
     if (dir == "image_00") {
@@ -119,7 +120,7 @@ void Kitti2BagNode::get_filenames()
   for (auto & dir : dirs_) {
     std::vector<std::string> filenames_vec{};
     try {
-      fs::path directory_path = kitti_path_ / dir / "data";
+      fs::path directory_path = kitti_path_ / data_folder_/ dir / "data";
       if (fs::is_directory(directory_path)) {
         for (const auto & entry : fs::directory_iterator(directory_path)) {
           if (entry.is_regular_file()) {
@@ -165,7 +166,7 @@ void Kitti2BagNode::get_all_timestamps()
     std::vector<rclcpp::Time> timestamps_vec{};
 
     // open the file
-    std::ifstream input_file(kitti_path_ / dir / "timestamps.txt");
+    std::ifstream input_file(kitti_path_ / data_folder_ / dir / "timestamps.txt");
     if (!input_file.is_open()) {
       RCLCPP_ERROR(get_logger(), "Unable to open file timestamps.txt");
       rclcpp::shutdown();
