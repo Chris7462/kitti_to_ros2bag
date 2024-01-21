@@ -120,7 +120,7 @@ void Kitti2BagNode::get_filenames()
   for (auto & dir : dirs_) {
     std::vector<std::string> filenames_vec{};
     try {
-      fs::path directory_path = kitti_path_ / data_folder_/ dir / "data";
+      fs::path directory_path = kitti_path_ / data_folder_ / dir / "data";
       if (fs::is_directory(directory_path)) {
         for (const auto & entry : fs::directory_iterator(directory_path)) {
           if (entry.is_regular_file()) {
