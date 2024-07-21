@@ -30,7 +30,7 @@ Kitti2BagNode::Kitti2BagNode()
   data_folder_ = declare_parameter("data_folder", std::string());
   calib_folder_ = declare_parameter("calib_folder", std::string());
   dirs_ = declare_parameter("dirs", std::vector<std::string>());
-  std::string output_bag_name = declare_parameter("output_bag_name", std::string());
+  std::string output_bag_name = data_folder_ + "_bag";
 
   get_filenames();
   get_all_timestamps();
