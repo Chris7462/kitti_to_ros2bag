@@ -11,15 +11,64 @@ The current version of this repository only supports the conversion of KITTI raw
     ```
 3. Modify the **kitti_to_ros2bag.yaml** file under *params* folder.
     * *kitti_path*: indicates the data path
+    * *data_folder*: indicates the data folder
+    * *calib_folder*: indicates the calibation folder. By default the calibration files are under kitti_path. If you put the calibration files into a different folder, then you will have to change this value.
     * *dirs*: designates the directories to be written into the bag
-    * *output_bag_name*: specifies the output bag name
 
     For example:
 
     ```yaml
-    kitti_path: "/data/kitti/raw/2011_09_29_drive_0071_sync/"
+    kitti_path: "/data/kitti/raw/2011_09_29"
+    data_folder: "2011_09_29_drive_0071_sync"
+    calib_folder: ""
     dirs: ["image_00", "image_01", "image_02", "image_03", "oxts", "velodyne_points"]
-    output_bag_name: "2011_09_29_drive_0071_sync_bag"
+    ```
+    The corresponding folder structure:
+    ```
+    /data/kitti/raw/2011_09_29/     <--- kitti_path
+    ├── 2011_09_29_drive_0071_sync  <--- data_folder
+    │   ├── image_00                <--- dirs
+    │   │   ├── data
+    │   │   │   ├── 0000000000.png
+    │   │   │   ├── ...
+    │   │   │   └── 0000001058.png
+    │   │   └── timestamps.txt
+    │   ├── image_01
+    │   │   ├── data
+    │   │   │   ├── 0000000000.png
+    │   │   │   ├── ...
+    │   │   │   └── 0000001058.png
+    │   │   └── timestamps.txt
+    │   ├── image_02
+    │   │   ├── data
+    │   │   │   ├── 0000000000.png
+    │   │   │   ├── ...
+    │   │   │   └── 0000001058.png
+    │   │   └── timestamps.txt
+    │   ├── image_03
+    │   │   ├── data
+    │   │   │   ├── 0000000000.png
+    │   │   │   ├── ...
+    │   │   │   └── 0000001058.png
+    │   │   └── timestamps.txt
+    │   ├── oxts
+    │   │   ├── data
+    │   │   │   ├── 0000000000.txt
+    │   │   │   ├── ...
+    │   │   │   └── 0000001058.txt
+    │   │   ├── dataformat.txt
+    │   │   └── timestamps.txt
+    │   └── velodyne_points
+    │       ├── data
+    │       │   ├── 0000000000.bin
+    │       │   ├── ...
+    │       │   └── 0000001058.bin
+    │       ├── timestamps_end.txt
+    │       ├── timestamps_start.txt
+    │       └── timestamps.txt
+    ├── calib_cam_to_cam.txt        <--- calibrations
+    ├── calib_imu_to_velo.txt
+    └── calib_velo_to_cam.txt
     ```
 4. Build the package
     ```bash

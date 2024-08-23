@@ -3,6 +3,7 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <ctime>
 
 // OpenCV header
 #include <opencv2/imgcodecs.hpp>
@@ -258,7 +259,7 @@ sensor_msgs::msg::NavSatFix Kitti2BagNode::convert_oxts_to_gps_msg(
 {
   sensor_msgs::msg::NavSatFix msg;
   msg.header.stamp = timestamp;
-  msg.header.frame_id = "gps_link";
+  msg.header.frame_id = "oxts_link";
 
   msg.status.status = sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX;
   msg.status.service = sensor_msgs::msg::NavSatStatus::SERVICE_GPS;
@@ -288,7 +289,7 @@ geometry_msgs::msg::TwistStamped Kitti2BagNode::convert_oxts_to_vel_msg(
 {
   geometry_msgs::msg::TwistStamped msg;
   msg.header.stamp = timestamp;
-  msg.header.frame_id = "gps_link";
+  msg.header.frame_id = "oxts_link";
 
   msg.twist.linear.x = std::atof(oxts_tokenized_array[8].c_str());
   msg.twist.linear.y = std::atof(oxts_tokenized_array[9].c_str());
@@ -307,7 +308,7 @@ sensor_msgs::msg::Imu Kitti2BagNode::convert_oxts_to_imu_msg(
 {
   sensor_msgs::msg::Imu msg;
   msg.header.stamp = timestamp;
-  msg.header.frame_id = "imu_link";
+  msg.header.frame_id = "oxts_link";
 
   // - roll:  roll angle (rad),  0 = level, positive = left side up,      range: -pi   .. +pi
   // - pitch: pitch angle (rad), 0 = level, positive = front down,        range: -pi/2 .. +pi/2
