@@ -1,12 +1,57 @@
 kitti_to_ros2bag_node:
   ros__parameters:
-    kitti_path: "/data/kitti/raw/2011_09_30"
-    data_folder: "2011_09_30_drive_0018_sync"
+    kitti_path: "/data/kitti/raw/2011_09_29"
+    data_folder: "2011_09_29_drive_0071_sync"
     # this folder shall have image_00, image_01, image_02, image_03, oxts, and velodyne_points
     calib_folder: ""
     # by default the calibration files are under kitti_path. If you put the calibration files into
     # a different folder, then you will have to change it.
     # The folder shall have calib_cam_to_cam.txt, calib_imu_to_velo.txt, and calib_velo_to_cam.txt.
-    # if not, the camera_info won't be outputed
+    # if not, the camera_info won't be outputted
     dirs: ["image_00", "image_01", "image_02", "image_03", "oxts", "velodyne_points"] # dirs that you want to publish
     # dirs: ["image_00"] this will output image_00 data only
+
+# /data/kitti/raw/2011_09_29/     <--- kitti_path
+# ├── 2011_09_29_drive_0071_sync  <--- data_folder & calib_folder
+# │   ├── image_00                <--- dirs
+# │   │   ├── data
+# │   │   │   ├── 0000000000.png
+# │   │   │   ├── ...
+# │   │   │   └── 0000001058.png
+# │   │   └── timestamps.txt
+# │   ├── image_01
+# │   │   ├── data
+# │   │   │   ├── 0000000000.png
+# │   │   │   ├── ...
+# │   │   │   └── 0000001058.png
+# │   │   └── timestamps.txt
+# │   ├── image_02
+# │   │   ├── data
+# │   │   │   ├── 0000000000.png
+# │   │   │   ├── ...
+# │   │   │   └── 0000001058.png
+# │   │   └── timestamps.txt
+# │   ├── image_03
+# │   │   ├── data
+# │   │   │   ├── 0000000000.png
+# │   │   │   ├── ...
+# │   │   │   └── 0000001058.png
+# │   │   └── timestamps.txt
+# │   ├── oxts
+# │   │   ├── data
+# │   │   │   ├── 0000000000.txt
+# │   │   │   ├── ...
+# │   │   │   └── 0000001058.txt
+# │   │   ├── dataformat.txt
+# │   │   └── timestamps.txt
+# │   └── velodyne_points
+# │       ├── data
+# │       │   ├── 0000000000.bin
+# │       │   ├── ...
+# │       │   └── 0000001058.bin
+# │       ├── timestamps_end.txt
+# │       ├── timestamps_start.txt
+# │       └── timestamps.txt
+# ├── calib_cam_to_cam.txt
+# ├── calib_imu_to_velo.txt
+# └── calib_velo_to_cam.txt
