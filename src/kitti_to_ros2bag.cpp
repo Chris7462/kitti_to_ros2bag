@@ -99,9 +99,9 @@ void Kitti2BagNode::on_timer_callback()
       writer_->write(vel_msg, "kitti/oxts/gps/vel", tmp1);
 
       // write the IMU data to bag
-      auto img_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
+      auto imu_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
       rclcpp::Time tmp2 = rclcpp::Time(timestamp.nanoseconds() + 20);
-      writer_->write(img_msg, "kitti/oxts/imu", tmp2);
+      writer_->write(imu_msg, "kitti/oxts/imu", tmp2);
     } else if (dir == "velodyne_points") {
       auto msg = convert_velo_to_msg(filename, timestamp);
       writer_->write(msg, "kitti/velo", timestamp);
