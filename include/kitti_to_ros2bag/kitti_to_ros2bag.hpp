@@ -8,6 +8,7 @@
 
 // ROS header
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/serialization.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
@@ -15,6 +16,8 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <rosbag2_cpp/writer.hpp>
+#include <rosbag2_storage/topic_metadata.hpp>
+#include <rosbag2_storage/serialized_bag_message.hpp>
 
 
 namespace fs = std::filesystem;
@@ -35,6 +38,30 @@ public:
 
 private:
   void on_timer_callback();
+  void create_topics();
+  void create_topic(const std::string& topic_name, const std::string& topic_type);
+
+  template<typename T>
+  void write_message(const T& msg, const std::string& topic_name, const rclcpp::Time& timestamp)
+  {
+    // Serialize the message
+    rclcpp::SerializedMessage serialized_msg;
+    rclcpp::Serialization<T> serializer;
+    serializer.serialize_message(&msg, &serialized_msg);
+
+    // Create a bag message
+    auto bag_message = std::make_shared<rosbag2_storage::SerializedBagMessage>();
+    bag_message->topic_name = topic_name;
+    bag_message->recv_timestamp = timestamp.nanoseconds();
+
+    // Get the serialized data
+    auto& rcl_serialized_msg = serialized_msg.get_rcl_serialized_message();
+    bag_message->serialized_data = std::make_shared<rcutils_uint8_array_t>();
+    *bag_message->serialized_data = rcl_serialized_msg;
+
+    // Write the message to the bag
+    writer_->write(bag_message);
+  }
 
   std::unique_ptr<rosbag2_cpp::Writer> writer_;
   rclcpp::TimerBase::SharedPtr timer_;

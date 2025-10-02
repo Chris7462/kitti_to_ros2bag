@@ -17,6 +17,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cv_bridge/cv_bridge.hpp>
 #include <pcl_conversions/pcl_conversions.h>
+#include <rosbag2_storage/storage_options.hpp>
 
 // local header
 #include "kitti_to_ros2bag/kitti_to_ros2bag.hpp"
@@ -41,7 +42,7 @@ Kitti2BagNode::Kitti2BagNode()
   // Configure storage options for MCAP format
   rosbag2_storage::StorageOptions storage_options;
   storage_options.uri = output_bag_name;
-  storage_options.storage_id = "mcap";  // Changed from default sqlite3 to mcap
+  storage_options.storage_id = "mcap";
 
   // Configure converter options
   rosbag2_cpp::ConverterOptions converter_options;
@@ -50,7 +51,40 @@ Kitti2BagNode::Kitti2BagNode()
 
   writer_->open(storage_options, converter_options);
 
+  // Create topics with metadata
+  create_topics();
+
   timer_ = create_wall_timer(100ms, std::bind(&Kitti2BagNode::on_timer_callback, this));
+}
+
+void Kitti2BagNode::create_topics()
+{
+  // Camera image topics
+  create_topic("/kitti/camera/gray/left/image_raw", "sensor_msgs/msg/Image");
+  create_topic("/kitti/camera/gray/left/camera_info", "sensor_msgs/msg/CameraInfo");
+  create_topic("/kitti/camera/gray/right/image_raw", "sensor_msgs/msg/Image");
+  create_topic("/kitti/camera/gray/right/camera_info", "sensor_msgs/msg/CameraInfo");
+  create_topic("/kitti/camera/color/left/image_raw", "sensor_msgs/msg/Image");
+  create_topic("/kitti/camera/color/left/camera_info", "sensor_msgs/msg/CameraInfo");
+  create_topic("/kitti/camera/color/right/image_raw", "sensor_msgs/msg/Image");
+  create_topic("/kitti/camera/color/right/camera_info", "sensor_msgs/msg/CameraInfo");
+
+  // OXTS topics
+  create_topic("/kitti/oxts/gps/fix", "sensor_msgs/msg/NavSatFix");
+  create_topic("/kitti/oxts/gps/vel", "geometry_msgs/msg/TwistStamped");
+  create_topic("/kitti/oxts/imu", "sensor_msgs/msg/Imu");
+
+  // Velodyne topic
+  create_topic("/kitti/velo", "sensor_msgs/msg/PointCloud2");
+}
+
+void Kitti2BagNode::create_topic(const std::string& topic_name, const std::string& topic_type)
+{
+  rosbag2_storage::TopicMetadata topic_metadata;
+  topic_metadata.name = topic_name;
+  topic_metadata.type = topic_type;
+  topic_metadata.serialization_format = "cdr";
+  writer_->create_topic(topic_metadata);
 }
 
 void Kitti2BagNode::on_timer_callback()
@@ -65,36 +99,36 @@ void Kitti2BagNode::on_timer_callback()
 
     if (dir == "image_00") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
-      writer_->write(msg, "kitti/camera/gray/left/image_raw", timestamp);
+      write_message(msg, "/kitti/camera/gray/left/image_raw", timestamp);
       if (calib_flag) {
         auto msg = convert_calib_to_msg(calib_file, timestamp, "0", "cam0_link");
         // Have to add some offset to the timestamp, otherwise it will overwrite the previous message
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
-        writer_->write(msg, "kitti/camera/gray/left/camera_info", tmp);
+        write_message(msg, "/kitti/camera/gray/left/camera_info", tmp);
       }
     } else if (dir == "image_01") {
       auto msg = convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
-      writer_->write(msg, "kitti/camera/gray/right/image_raw", timestamp);
+      write_message(msg, "/kitti/camera/gray/right/image_raw", timestamp);
       if (calib_flag) {
         auto msg = convert_calib_to_msg(calib_file, timestamp, "1", "cam1_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
-        writer_->write(msg, "kitti/camera/gray/right/camera_info", tmp);
+        write_message(msg, "/kitti/camera/gray/right/camera_info", tmp);
       }
     } else if (dir == "image_02") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
-      writer_->write(msg, "kitti/camera/color/left/image_raw", timestamp);
+      write_message(msg, "/kitti/camera/color/left/image_raw", timestamp);
       if (calib_flag) {
         auto msg = convert_calib_to_msg(calib_file, timestamp, "2", "cam2_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
-        writer_->write(msg, "kitti/camera/color/left/camera_info", tmp);
+        write_message(msg, "/kitti/camera/color/left/camera_info", tmp);
       }
     } else if (dir == "image_03") {
       auto msg = convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
-      writer_->write(msg, "kitti/camera/color/right/image_raw", timestamp);
+      write_message(msg, "/kitti/camera/color/right/image_raw", timestamp);
       if (calib_flag) {
         auto msg = convert_calib_to_msg(calib_file, timestamp, "3", "cam3_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
-        writer_->write(msg, "kitti/camera/color/right/camera_info", tmp);
+        write_message(msg, "/kitti/camera/color/right/camera_info", tmp);
       }
     } else if (dir == "oxts") {
       // parse the oxts data
@@ -102,20 +136,20 @@ void Kitti2BagNode::on_timer_callback()
 
       // write the GPS data to bag
       auto gps_msg = convert_oxts_to_gps_msg(oxts_parsed_array, timestamp);
-      writer_->write(gps_msg, "kitti/oxts/gps/fix", timestamp);
+      write_message(gps_msg, "/kitti/oxts/gps/fix", timestamp);
 
       // write the velocity data to bag
       auto vel_msg = convert_oxts_to_vel_msg(oxts_parsed_array, timestamp);
       rclcpp::Time tmp1 = rclcpp::Time(timestamp.nanoseconds() + 10);
-      writer_->write(vel_msg, "kitti/oxts/gps/vel", tmp1);
+      write_message(vel_msg, "/kitti/oxts/gps/vel", tmp1);
 
       // write the IMU data to bag
       auto imu_msg = convert_oxts_to_imu_msg(oxts_parsed_array, timestamp);
       rclcpp::Time tmp2 = rclcpp::Time(timestamp.nanoseconds() + 20);
-      writer_->write(imu_msg, "kitti/oxts/imu", tmp2);
+      write_message(imu_msg, "/kitti/oxts/imu", tmp2);
     } else if (dir == "velodyne_points") {
       auto msg = convert_velo_to_msg(filename, timestamp);
-      writer_->write(msg, "kitti/velo", timestamp);
+      write_message(msg, "/kitti/velo", timestamp);
     }
   }
 
