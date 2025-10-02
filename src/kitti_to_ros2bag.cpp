@@ -37,7 +37,18 @@ Kitti2BagNode::Kitti2BagNode()
   get_all_timestamps();
 
   writer_ = std::make_unique<rosbag2_cpp::Writer>();
-  writer_->open(output_bag_name);
+
+  // Configure storage options for MCAP format
+  rosbag2_storage::StorageOptions storage_options;
+  storage_options.uri = output_bag_name;
+  storage_options.storage_id = "mcap";  // Changed from default sqlite3 to mcap
+
+  // Configure converter options
+  rosbag2_cpp::ConverterOptions converter_options;
+  converter_options.input_serialization_format = "cdr";
+  converter_options.output_serialization_format = "cdr";
+
+  writer_->open(storage_options, converter_options);
 
   timer_ = create_wall_timer(100ms, std::bind(&Kitti2BagNode::on_timer_callback, this));
 }
