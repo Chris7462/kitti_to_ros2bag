@@ -78,7 +78,7 @@ void Kitti2BagNode::create_topics()
   create_topic("/kitti/velo", "sensor_msgs/msg/PointCloud2");
 }
 
-void Kitti2BagNode::create_topic(const std::string& topic_name, const std::string& topic_type)
+void Kitti2BagNode::create_topic(const std::string & topic_name, const std::string & topic_type)
 {
   rosbag2_storage::TopicMetadata topic_metadata;
   topic_metadata.name = topic_name;

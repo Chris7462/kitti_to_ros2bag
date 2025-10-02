@@ -39,10 +39,10 @@ public:
 private:
   void on_timer_callback();
   void create_topics();
-  void create_topic(const std::string& topic_name, const std::string& topic_type);
+  void create_topic(const std::string & topic_name, const std::string & topic_type);
 
   template<typename T>
-  void write_message(const T& msg, const std::string& topic_name, const rclcpp::Time& timestamp)
+  void write_message(const T & msg, const std::string & topic_name, const rclcpp::Time & timestamp)
   {
     // Serialize the message
     rclcpp::SerializedMessage serialized_msg;
@@ -55,7 +55,7 @@ private:
     bag_message->recv_timestamp = timestamp.nanoseconds();
 
     // Get the serialized data
-    auto& rcl_serialized_msg = serialized_msg.get_rcl_serialized_message();
+    auto & rcl_serialized_msg = serialized_msg.get_rcl_serialized_message();
     bag_message->serialized_data = std::make_shared<rcutils_uint8_array_t>();
     *bag_message->serialized_data = rcl_serialized_msg;
 
