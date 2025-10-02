@@ -132,7 +132,7 @@ void Kitti2BagNode::on_timer_callback()
       }
     } else if (dir == "oxts") {
       // parse the oxts data
-      std::vector<std::string> oxts_parsed_array = parse_file_data(filename, " ");
+      std::vector<std::string> oxts_parsed_array = parse_file_data(filename);
 
       // write the GPS data to bag
       auto gps_msg = convert_oxts_to_gps_msg(oxts_parsed_array, timestamp);
@@ -229,11 +229,11 @@ void Kitti2BagNode::get_all_timestamps()
         rclcpp::shutdown();
       }
 
-      // Extract microseconds and convert to duration
+      // Extract nanoseconds and convert to duration
       std::chrono::nanoseconds::rep nanoSecondsCount;
       iss >> nanoSecondsCount;
       if (iss.fail()) {
-        RCLCPP_ERROR(get_logger(), "Failed to parse microseconds.");
+        RCLCPP_ERROR(get_logger(), "Failed to parse nanoseconds.");
         rclcpp::shutdown();
       }
       auto nanoseconds = std::chrono::nanoseconds(nanoSecondsCount).count();
@@ -263,8 +263,7 @@ sensor_msgs::msg::Image Kitti2BagNode::convert_image_to_msg(
   return *msg;
 }
 
-std::vector<std::string> Kitti2BagNode::parse_file_data(
-  const fs::path & file_path, std::string delimiter)
+std::vector<std::string> Kitti2BagNode::parse_file_data(const fs::path & file_path)
 {
   std::ifstream input_file(file_path);
 
@@ -276,7 +275,7 @@ std::vector<std::string> Kitti2BagNode::parse_file_data(
   std::string file_content_string;
   if (input_file) {
     std::ostringstream ss;
-    ss << input_file.rdbuf(); // reading data
+    ss << input_file.rdbuf();
     file_content_string = ss.str();
   }
 
@@ -284,7 +283,7 @@ std::vector<std::string> Kitti2BagNode::parse_file_data(
   std::vector<std::string> tokens;
   size_t first = 0;
   while (first < file_content_string.size()) {
-    size_t second = file_content_string.find_first_of(delimiter, first);
+    size_t second = file_content_string.find_first_of(' ', first);
     //first has index of start of token
     //second has index of end of token + 1;
     if (second == std::string::npos) {

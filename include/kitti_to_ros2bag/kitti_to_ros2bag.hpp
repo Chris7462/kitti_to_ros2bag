@@ -73,7 +73,7 @@ private:
     const fs::path & file_path, const rclcpp::Time & timestamp,
     const std::string & encoding, const std::string & frame_id);
 
-  std::vector<std::string> parse_file_data(const fs::path & file_path, std::string delimiter);
+  std::vector<std::string> parse_file_data(const fs::path & file_path);
 
   sensor_msgs::msg::NavSatFix convert_oxts_to_gps_msg(
     const std::vector<std::string> & oxts_tokenized_array,
