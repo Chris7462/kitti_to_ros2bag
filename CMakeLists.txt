@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
+find_package(rosbag2_storage REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -34,6 +35,7 @@ target_include_directories(kitti_to_ros2bag_node PUBLIC
 ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
   rclcpp
   rosbag2_cpp
+  rosbag2_storage
   geometry_msgs
   sensor_msgs
   tf2
