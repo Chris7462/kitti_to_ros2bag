@@ -24,7 +24,10 @@ find_package(PCL REQUIRED)
 
 add_executable(kitti_to_ros2bag_node
   src/kitti_to_ros2bag_node.cpp
-  src/kitti_to_ros2bag.cpp)
+  src/kitti_to_ros2bag.cpp
+  src/bag_writer.cpp
+  src/data_loader.cpp
+  src/message_converter.cpp)
 
 target_include_directories(kitti_to_ros2bag_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
