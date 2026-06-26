@@ -10,7 +10,7 @@
 #include <pcl/point_cloud.h>
 
 // ROS 2
-#include <tf2/utils.h>
+#include <tf2/utils.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cv_bridge/cv_bridge.hpp>
 #include <pcl_conversions/pcl_conversions.h>

@@ -7,8 +7,8 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    params = join(
-        get_package_share_directory('kitti_to_ros2bag'), 'params', 'kitti_to_ros2bag.yaml'
+    param = join(
+        get_package_share_directory('kitti_to_ros2bag'), 'param', 'kitti_to_ros2bag.yaml'
     )
 
     kitti_to_ros2bag_node = Node(
@@ -16,7 +16,7 @@ def generate_launch_description():
         executable='kitti_to_ros2bag_node',
         name='kitti_to_ros2bag_node',
         output='screen',
-        parameters=[params]
+        parameters=[param]
     )
 
     return LaunchDescription([

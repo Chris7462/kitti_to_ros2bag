@@ -13,15 +13,16 @@ namespace fs = std::filesystem;
 class DataLoader
 {
 public:
-  DataLoader(const fs::path & kitti_path, const std::string & data_folder,
+  DataLoader(
+    const fs::path & kitti_path, const std::string & data_folder,
     const std::vector<std::string> & dirs, const rclcpp::Logger & logger);
 
   void load_filenames();
   void load_timestamps();
 
-  size_t get_max_index() const { return max_index_; }
-  const std::vector<std::vector<std::string>> & get_filenames() const { return filenames_; }
-  const std::vector<std::vector<rclcpp::Time>> & get_timestamps() const { return timestamps_; }
+  size_t get_max_index() const {return max_index_;}
+  const std::vector<std::vector<std::string>> & get_filenames() const {return filenames_;}
+  const std::vector<std::vector<rclcpp::Time>> & get_timestamps() const {return timestamps_;}
 
 private:
   fs::path kitti_path_;

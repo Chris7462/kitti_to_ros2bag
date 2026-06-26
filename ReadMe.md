@@ -9,7 +9,7 @@ The current version of this repository only supports the conversion of KITTI raw
     ```bash
     git clone https://github.com/Chris7462/kitti_to_ros2bag.git
     ```
-3. Modify the **kitti_to_ros2bag.yaml** file under *params* folder.
+3. Modify the **kitti_to_ros2bag.yaml** file under *param* folder.
     * *kitti_path*: indicates the data path
     * *data_folder*: indicates the data folder
     * *calib_folder*: indicates the calibation folder. By default the calibration files are under kitti_path. If you put the calibration files into a different folder, then you will have to change this value.

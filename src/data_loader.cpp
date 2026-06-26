@@ -8,7 +8,8 @@
 #include "kitti_to_ros2bag/data_loader.hpp"
 
 
-DataLoader::DataLoader(const fs::path & kitti_path, const std::string & data_folder,
+DataLoader::DataLoader(
+  const fs::path & kitti_path, const std::string & data_folder,
   const std::vector<std::string> & dirs, const rclcpp::Logger & logger)
 : kitti_path_(kitti_path), data_folder_(data_folder), dirs_(dirs), logger_(logger), max_index_(0)
 {
