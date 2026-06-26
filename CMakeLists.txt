@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 project(kitti_to_ros2bag)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -35,18 +35,16 @@ target_include_directories(kitti_to_ros2bag_node PUBLIC
   ${OpenCV_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS})
 
-ament_target_dependencies(kitti_to_ros2bag_node PUBLIC
-  rclcpp
-  rosbag2_cpp
-  rosbag2_storage
-  geometry_msgs
-  sensor_msgs
-  tf2
-  tf2_geometry_msgs
-  cv_bridge
-  pcl_conversions)
-
 target_link_libraries(kitti_to_ros2bag_node PUBLIC
+  rclcpp::rclcpp
+  rosbag2_cpp::rosbag2_cpp
+  rosbag2_storage::rosbag2_storage
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  tf2::tf2
+  tf2_geometry_msgs::tf2_geometry_msgs
+  cv_bridge::cv_bridge
+  pcl_conversions::pcl_conversions
   opencv_imgcodecs
   ${PCL_LIBRARIES})
 
