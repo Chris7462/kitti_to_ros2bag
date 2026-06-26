@@ -30,8 +30,9 @@ class MessageConverter
 public:
   explicit MessageConverter(const rclcpp::Logger & logger);
 
-  sensor_msgs::msg::Image convert_image_to_msg(const fs::path & file_path,
-    const rclcpp::Time & timestamp, const std::string & encoding, const std::string & frame_id);
+  sensor_msgs::msg::Image convert_image_to_msg(
+    const fs::path & file_path, const rclcpp::Time & timestamp,
+    const std::string & encoding, const std::string & frame_id);
 
   sensor_msgs::msg::NavSatFix convert_oxts_to_gps_msg(
     const std::vector<std::string> & oxts_tokenized_array, const rclcpp::Time & timestamp);

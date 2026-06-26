@@ -42,34 +42,42 @@ void Kitti2BagNode::on_timer_callback()
     rclcpp::Time timestamp = timestamps_[i][index_];
 
     if (dir == "image_00") {
-      auto msg = message_converter_->convert_image_to_msg(filename, timestamp, "mono8", "cam0_link");
+      auto msg = message_converter_->convert_image_to_msg(
+        filename, timestamp, "mono8", "cam0_link");
       bag_writer_->write_message(msg, "/kitti/camera/gray/left/image_raw", timestamp);
       if (calib_flag) {
-        auto msg = message_converter_->convert_calib_to_msg(calib_file, timestamp, "0", "cam0_link");
+        auto msg = message_converter_->convert_calib_to_msg(
+          calib_file, timestamp, "0", "cam0_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
         bag_writer_->write_message(msg, "/kitti/camera/gray/left/camera_info", tmp);
       }
     } else if (dir == "image_01") {
-      auto msg = message_converter_->convert_image_to_msg(filename, timestamp, "mono8", "cam1_link");
+      auto msg = message_converter_->convert_image_to_msg(
+        filename, timestamp, "mono8", "cam1_link");
       bag_writer_->write_message(msg, "/kitti/camera/gray/right/image_raw", timestamp);
       if (calib_flag) {
-        auto msg = message_converter_->convert_calib_to_msg(calib_file, timestamp, "1", "cam1_link");
+        auto msg = message_converter_->convert_calib_to_msg(
+          calib_file, timestamp, "1", "cam1_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
         bag_writer_->write_message(msg, "/kitti/camera/gray/right/camera_info", tmp);
       }
     } else if (dir == "image_02") {
-      auto msg = message_converter_->convert_image_to_msg(filename, timestamp, "bgr8", "cam2_link");
+      auto msg = message_converter_->convert_image_to_msg(
+        filename, timestamp, "bgr8", "cam2_link");
       bag_writer_->write_message(msg, "/kitti/camera/color/left/image_raw", timestamp);
       if (calib_flag) {
-        auto msg = message_converter_->convert_calib_to_msg(calib_file, timestamp, "2", "cam2_link");
+        auto msg = message_converter_->convert_calib_to_msg(
+          calib_file, timestamp, "2", "cam2_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
         bag_writer_->write_message(msg, "/kitti/camera/color/left/camera_info", tmp);
       }
     } else if (dir == "image_03") {
-      auto msg = message_converter_->convert_image_to_msg(filename, timestamp, "bgr8", "cam3_link");
+      auto msg = message_converter_->convert_image_to_msg(
+        filename, timestamp, "bgr8", "cam3_link");
       bag_writer_->write_message(msg, "/kitti/camera/color/right/image_raw", timestamp);
       if (calib_flag) {
-        auto msg = message_converter_->convert_calib_to_msg(calib_file, timestamp, "3", "cam3_link");
+        auto msg = message_converter_->convert_calib_to_msg(
+          calib_file, timestamp, "3", "cam3_link");
         rclcpp::Time tmp = rclcpp::Time(timestamp.nanoseconds() + 10);
         bag_writer_->write_message(msg, "/kitti/camera/color/right/camera_info", tmp);
       }
