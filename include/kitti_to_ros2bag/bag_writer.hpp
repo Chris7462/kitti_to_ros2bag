@@ -10,8 +10,6 @@
 #include <rclcpp/qos.hpp>
 #include <rclcpp/serialization.hpp>
 #include <rosbag2_cpp/writer.hpp>
-#include <rosbag2_cpp/converter_options.hpp>
-#include <rosbag2_storage/serialized_bag_message.hpp>
 #include <rosidl_runtime_cpp/traits.hpp>
 
 

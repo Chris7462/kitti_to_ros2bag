@@ -1,6 +1,7 @@
 // ROS 2
 #include <rosbag2_storage/storage_options.hpp>
 #include <rosbag2_storage/topic_metadata.hpp>
+#include <rosbag2_cpp/converter_options.hpp>
 
 // local
 #include "kitti_to_ros2bag/bag_writer.hpp"
