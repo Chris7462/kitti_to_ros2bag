@@ -13,6 +13,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(rosbag2_storage REQUIRED)
+find_package(rosidl_runtime_cpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -20,7 +21,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(PCL REQUIRED)
+find_package(PCL REQUIRED COMPONENTS common)
 
 add_executable(kitti_to_ros2bag_node
   src/kitti_to_ros2bag_node.cpp
@@ -31,22 +32,21 @@ add_executable(kitti_to_ros2bag_node
 
 target_include_directories(kitti_to_ros2bag_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
-  ${OpenCV_INCLUDE_DIRS}
-  ${PCL_INCLUDE_DIRS})
+  $<INSTALL_INTERFACE:include>)
 
 target_link_libraries(kitti_to_ros2bag_node PUBLIC
-  rclcpp::rclcpp
-  rosbag2_cpp::rosbag2_cpp
-  rosbag2_storage::rosbag2_storage
+  ${rclcpp_TARGETS}
+  ${rosbag2_cpp_TARGETS}
+  ${rosbag2_storage_TARGETS}
   ${geometry_msgs_TARGETS}
   ${sensor_msgs_TARGETS}
-  tf2::tf2
-  tf2_geometry_msgs::tf2_geometry_msgs
-  cv_bridge::cv_bridge
-  pcl_conversions::pcl_conversions
+  ${tf2_TARGETS}
+  ${tf2_geometry_msgs_TARGETS}
+  ${cv_bridge_TARGETS}
+  ${pcl_conversions_TARGETS}
+  ${rosidl_runtime_cpp_TARGETS}
   opencv_imgcodecs
-  ${PCL_LIBRARIES})
+  pcl_common)
 
 target_compile_features(kitti_to_ros2bag_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 

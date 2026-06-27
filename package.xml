@@ -3,21 +3,24 @@
 <package format="3">
   <name>kitti_to_ros2bag</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Kitti data to ROS2 bag</description>
   <maintainer email="chris7462@gmail.com">chris7462</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+
   <depend>rclcpp</depend>
   <depend>rosbag2_cpp</depend>
   <depend>rosbag2_storage</depend>
+  <depend>rosidl_default_runtime</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>pcl_conversions</depend>
-  <depend>rosidl_default_runtime</depend>
+  <depend>libopencv-dev</depend>
+  <depend>libpcl-all-dev</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
