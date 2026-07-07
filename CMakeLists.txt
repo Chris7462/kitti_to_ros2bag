@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
-project(kitti_to_ros2bag)
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-O3 -Wall -Wextra -Wpedantic)
+project(kitti_to_ros2bag
+  VERSION 1.0.0
+  DESCRIPTION "KITTI data to ROS2 bag convertor node"
+  LANGUAGES C CXX)
+
+# Default to a Release build if the user doesn't specify one
+if(NOT CMAKE_BUILD_TYPE)
+  message(STATUS "No build type specified, defaulting to 'Release'.")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(rosbag2_storage REQUIRED)
@@ -23,18 +26,17 @@ find_package(pcl_conversions REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common)
 
-add_executable(kitti_to_ros2bag_node
+add_executable(${PROJECT_NAME}_node
   src/kitti_to_ros2bag_node.cpp
   src/kitti_to_ros2bag.cpp
   src/bag_writer.cpp
   src/data_loader.cpp
   src/message_converter.cpp)
 
-target_include_directories(kitti_to_ros2bag_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}_node PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_link_libraries(kitti_to_ros2bag_node PUBLIC
+target_link_libraries(${PROJECT_NAME}_node PRIVATE
   ${rclcpp_TARGETS}
   ${rosbag2_cpp_TARGETS}
   ${rosbag2_storage_TARGETS}
@@ -48,9 +50,14 @@ target_link_libraries(kitti_to_ros2bag_node PUBLIC
   opencv_imgcodecs
   pcl_common)
 
-target_compile_features(kitti_to_ros2bag_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(${PROJECT_NAME}_node PRIVATE cxx_std_17)  # Require C++17
 
-install(TARGETS kitti_to_ros2bag_node
+target_compile_options(${PROJECT_NAME}_node PRIVATE
+  -Wall
+  -Wextra
+  -Wpedantic)
+
+install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch
